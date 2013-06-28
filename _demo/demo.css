@@ -1,0 +1,129 @@
+@import url('http://fonts.googleapis.com/css?family=Gentium+Book+Basic:400,400italic,700,700italic|Open+Sans:300italic,400italic,600italic,400,300,600');
+
+body
+{
+	font-size: 100%;
+	font-weight: 300;
+	font-family: 'Gentium Book Basic';
+	line-height: 1.618;
+
+	color: rgb(226, 230, 231);
+	background: rgb(52, 63, 84);
+	
+	margin: 0;
+}
+
+h1
+{
+	text-transform: uppercase;
+	text-align: center;
+	font-size: 5rem;
+}
+
+h2
+{
+	font-size: 3rem;
+}
+
+h3
+{
+	font-size: 2rem;
+}
+
+h1, h2, h3, h4, h5, h6
+{
+    font-family: 'Open Sans';
+	letter-spacing: 0.062em;
+
+	margin-top: 3rem;
+}
+
+p
+{
+	text-align: justify;
+
+	-ms-word-break: break-all;
+	word-break: break-all;
+	word-break: break-word;
+	-moz-hyphens: auto;
+	-webkit-hyphens: auto;
+	hyphens: auto;
+}
+
+.ampersand
+{
+	font-family: baskerville;
+	font-weight: normal;
+	font-style: italic;
+
+	color: rgb(24, 184, 168);
+}
+
+a
+{
+	color: rgb(24, 184, 168);
+}
+
+a:visited
+{
+	color: rgb(177, 124, 197);
+}
+
+a:hover, a:active
+{
+	color: rgb(79, 232, 217);
+}
+
+.article
+{
+	max-width: 40rem;
+	margin: 3rem auto;
+}
+
+::-moz-selection
+{
+	text-shadow: none;
+	background: hsl(174, 77%, 61%);
+	color: hsl(219, 24%, 37%);
+}
+
+::selection
+{
+	text-shadow: none;
+	background: hsl(174, 77%, 61%);
+	color: hsl(219, 24%, 37%);
+}
+
+::selection:window-inactive
+{
+	background: hsla(174, 77%, 61%, 0.75);
+	color: hsla(219, 24%, 37%, 0.75);
+}
+
+img::-moz-selection
+{
+	background: transparent;
+}
+
+img::selection
+{
+	background: transparent;
+}
+
+
+ul
+{
+	margin: 0;
+	padding: 0;
+	list-style-type: square
+}
+
+ul > li > ul
+{
+	margin-left: 1rem;
+}
+
+strong
+{
+	letter-spacing: 0.062em;
+}

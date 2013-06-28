@@ -1,0 +1,382 @@
+@import url('http://fonts.googleapis.com/css?family=Gentium+Book+Basic:400,400italic,700,700italic|Open+Sans:300italic,400italic,600italic,400,300,600');
+
+/**
+ * prism.js default theme for JavaScript, CSS and HTML
+ * Based on dabblet (http://dabblet.com)
+ * @author Lea Verou
+ */
+
+code[class*="language-"],
+pre[class*="language-"] {
+	color: hsl(192, 15%, 94%);
+	font-family: 'Courier New', 'Andale Mono', monospace;
+	direction: ltr;
+	text-align: left;
+	white-space: pre;
+	word-spacing: normal;
+	-moz-tab-size: 4;
+	-o-tab-size: 4;
+	tab-size: 4;
+	-webkit-hyphens: none;
+	-moz-hyphens: none;
+	-ms-hyphens: none;
+	hyphens: none;
+}
+
+/* Code blocks */
+pre[class*="language-"] {
+	padding: 1em;
+	margin: .5em 0;
+	overflow: auto;	
+}
+
+:not(pre) > code[class*="language-"],
+pre[class*="language-"] {
+	background: hsl(219, 24%, 37%);
+}
+
+/* Inline code */
+:not(pre) > code[class*="language-"] {
+	padding: .1em;
+	border-radius: .3em;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+	color: hsl(201, 19.5%, 65.5%);
+}
+
+.token.punctuation {
+	color: hsl(145, 63%, 49%);
+}
+
+/*.namespace {
+	color: #859900;
+}*/
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number {
+	color: hsl(284, 39%, 63%);
+}
+
+.token.selector,
+.token.string {
+	color: hsl(174, 77%, 61%);
+}
+
+.token.function-name
+{
+	color: hsl(200, 100%, 60%);
+}
+
+.token.attr-name
+{
+	color: hsl(214, 90%, 73%);
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+	color: hsl(60, 89%, 50%);
+/*	background: hsla(0,0%,100%,.5);*/
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+	color: hsl(354, 97%, 71%);
+}
+
+
+.token.regex,
+.token.important {
+	color: hsl(0, 100%, 61%);
+}
+
+/*////////*/
+
+body
+{
+	font-size: 100%;
+	font-weight: 300;
+	font-family: 'Gentium Book Basic';
+	line-height: 1.618;
+
+	color: rgb(226, 230, 231);
+	background: rgb(52, 63, 84);
+	
+	margin: 0;
+}
+
+h1
+{
+	text-transform: uppercase;
+	text-align: center;
+	font-size: 5rem;
+}
+
+h2
+{
+	font-size: 3rem;
+}
+
+h3
+{
+	font-size: 2rem;
+}
+
+h1, h2, h3, h4, h5, h6
+{
+    font-family: 'Open Sans';
+	letter-spacing: 0.062em;
+
+	margin-top: 3rem;
+}
+
+p
+{
+	text-align: justify;
+
+	-ms-word-break: break-all;
+	word-break: break-all;
+	word-break: break-word;
+	-moz-hyphens: auto;
+	-webkit-hyphens: auto;
+	hyphens: auto;
+}
+
+.ampersand
+{
+	font-family: baskerville;
+	font-weight: normal;
+	font-style: italic;
+
+	color: rgb(24, 184, 168);
+}
+
+pre[class*="language-"]
+{
+	font-size: 1rem;
+
+	width: 60rem;
+	margin-left: -10rem;
+}
+
+
+code:not([class*="language-"])
+{
+	font-family: 'Courier New', 'Andale Mono', monospace;
+	color: hsl(174, 77%, 61%);
+	background: hsl(219, 24%, 37%);
+}
+
+code:not([class*="language-"])
+{
+	font-size: 1rem;
+	line-height: 1.4;
+}
+
+a
+{
+	color: rgb(24, 184, 168);
+}
+
+a:visited
+{
+	color: rgb(177, 124, 197);
+}
+
+a:hover, a:active
+{
+	color: rgb(79, 232, 217);
+}
+
+.article
+{
+	max-width: 40rem;
+	margin: 3rem auto;
+}
+
+.transition, .codelet, .codelet pre, .article h1:first-child, .article h1:first-child + h2
+{
+	-webkit-transition: all 1s;
+	-moz-transition: all 1s;
+	-ms-transition: all 1s;
+	-o-transition: all 1s;
+	transition: all 1s;
+}
+
+.codelet
+{
+	position: relative;
+	overflow: hidden;
+	background-color: hsl(219, 24%, 37%);
+	max-height: 40rem;
+
+	-moz-perspective: 800px;
+	-webkit-perspective: 800px;
+	-ms-perspective: 800px;
+	-o-perspective: 800px;
+	perspective: 800px;
+}
+
+.codelet.show
+{
+	max-height: 500rem;
+}
+
+.codelet.show pre
+{
+	-webkit-filter: blur(0);
+	filter: blur(0);
+
+	
+	-webkit-transform: rotateY( 0deg ) scale( 1, 1 ) translateY(0);
+	-moz-transform: rotateY( 0deg ) scale( 1, 1 ) translateY(0);
+	-ms-transform: rotateY( 0deg ) scale( 1, 1 ) translateY(0);
+	-o-transform: rotateY( 0deg ) scale( 1, 1 ) translateY(0);
+	transform: rotateY( 0deg ) scale( 1, 1 ) translateY(0);
+}
+
+.codelet.show pre code
+{
+	opacity: 1;
+}
+
+.codelet pre
+{
+	background: none;
+	margin: 0 auto;
+	width: 50rem;
+	overflow: hidden;
+	position: relative;
+
+	-webkit-filter: blur(1px);
+	filter: blur(1px);
+
+	-webkit-transform: rotateY( 15deg ) scale( 0.75, .75 ) translateY(-25%);
+	-moz-transform: rotateY( 15deg ) scale( 0.75, .75 ) translateY(-25%);
+	-ms-transform: rotateY( 15deg ) scale( 0.75, .75 ) translateY(-25%);
+	-o-transform: rotateY( 15deg ) scale( 0.75, .75 ) translateY(-25%);
+	transform: rotateY( 15deg ) scale( 0.75, .75 ) translateY(-25%);
+
+	-webkit-backface-visibility: visible;
+	-moz-backface-visibility: visible;
+	-ms-backface-visibility: visible;
+	-o-backface-visibility: visible;
+	backface-visibility: visible;
+}
+
+.codelet pre code
+{
+	opacity: .5;
+}
+
+.article h1:first-child, .article h1:first-child + h2
+{
+	line-height: 12rem;
+	position: absolute;
+	margin: 3rem auto;
+	font-family: 'Gentium Book Basic';
+	width: 100%;
+	left: 0;
+}
+
+.article h1:first-child
+{
+	font-size: 8rem;
+	color: hsl(174, 77%, 41%);
+	text-shadow: -.04em .06em hsl(174, 77%, 16%);
+
+	top: 6rem;
+}
+
+.codelet.show + .article h1:first-child, .codelet.show + .article h1:first-child + h2
+{
+	-webkit-transform: translateY(-15em);
+}
+
+.article h1:first-child + h2
+{
+	font-size: 6rem;
+	color: hsl(219, 24%, 27%);
+	text-shadow: -.04em .06em hsl(219, 24%, 2%);
+
+	top: 16rem;
+	text-align: center;
+}
+
+.article h1:first-child + h2 a
+{
+	text-shadow: -.04em .06em hsl(174, 77%, 16%);
+	text-decoration: none;
+}
+
+.codelet button
+{
+	position: absolute;
+	top: 0;
+	right: 0;
+	-webkit-appearance: none;
+	border: none;
+	background: hsl(219, 24%, 57%);
+	color: white;
+	font-size: 0.8rem;
+	margin: 0;
+	padding: 0.5rem 2rem;
+	cursor: pointer;
+}
+
+::-moz-selection
+{
+	text-shadow: none;
+	background: hsl(174, 77%, 61%);
+	color: hsl(219, 24%, 37%);
+}
+
+::selection
+{
+	text-shadow: none;
+	background: hsl(174, 77%, 61%);
+	color: hsl(219, 24%, 37%);
+}
+
+::selection:window-inactive
+{
+	background: hsla(174, 77%, 61%, 0.75);
+	color: hsla(219, 24%, 37%, 0.75);
+}
+
+img::-moz-selection
+{
+	background: transparent;
+}
+
+img::selection
+{
+	background: transparent;
+}
+
+
+ul
+{
+	margin: 0;
+	padding: 0;
+	list-style-type: square
+}
+
+ul > li > ul
+{
+	margin-left: 1rem;
+}
+
+strong
+{
+	letter-spacing: 0.062em;
+}

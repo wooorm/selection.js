@@ -1,0 +1,1160 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>
+selection.js
+</title>
+		<meta name="description" content="Cursor selection events in modern browsers." />
+		<meta name="keywords" content="selection, cursor, browser, event" />
+		<meta name="author" content="wooorm" />
+		<link rel="stylesheet" href="./client.css" type="text/css" charset="utf-8">
+	</head>
+	<body>
+		<section class="codelet">
+			<pre><code>
+    (
+        ( factory ) -&gt;
+
+            if typeof define is 'function' and define.amd then define factory
+
+            else @Selection = do factory
+
+    ).call @, -&gt;
+
+        _global = @
+
+        _EVENTS = [ 'mouseup', 'keyup' ]
+
+        _EMPTY_STRING = ''
+
+        Selection = ( global ) -&gt;
+
+            global or global = _global
+
+            if typeof global.getSelection isnt 'function' then return false
+
+            @_selection = do global.getSelection
+
+            @_global = global
+
+            @_listener = =&gt; SelectionPrototype._listener.apply @, arguments
+
+            @events = _EVENTS
+
+            @
+
+        SelectionPrototype = Selection:: = {}
+
+        SelectionPrototype._listener = ( _event ) -&gt;
+
+            setTimeout =&gt;
+
+                    value = _EMPTY_STRING + @_selection
+
+                    if value is @_previousValue then return
+
+                    if value is _EMPTY_STRING
+                        type = 'deselection'
+                        data = {}
+
+                    else
+                        type = 'selection'
+                        data = do @get
+
+                    data.originalEvent = _event
+
+                    event = @_global.document.createEvent 'CustomEvent'
+                    event.initCustomEvent type, false, false, data
+
+                    @_global.dispatchEvent event
+
+                    @_previousValue = value
+
+                , 0
+
+            @
+
+        SelectionPrototype.listen = -&gt;
+
+            @_previousValue = _EMPTY_STRING
+
+            iterator = -1
+            events = @events
+            length = events.length
+            document = @_global.document
+
+            while ++iterator &lt; length
+
+                event = events[ iterator ]
+
+                document.addEventListener event, @_listener, false
+
+            @
+
+        SelectionPrototype.ignore = -&gt;
+
+            iterator = -1
+            events = @events
+            length = events.length
+            document = @_global.document
+
+            while ++iterator &lt; length
+
+                event = events[ iterator ]
+
+                document.removeEventListener event, @_listener, false
+
+            @
+
+        SelectionPrototype.has = -&gt;
+
+            selection = @_selection
+
+            selection and selection.focusNode? and selection.anchorNode?
+
+        SelectionPrototype.set = ( $top, topOffset, $bottom, bottomOffset ) -&gt;
+
+            selection = @_selection
+
+            unless selection? then return false
+
+            unless $top? then return false
+
+            unless topOffset? then topOffset = 0
+
+            if $bottom is $top or not $bottom?
+
+                if $top.firstChild? and $top.lastChild?
+                    $bottom = $top.lastChild
+                    $top = $top.firstChild
+
+                else
+                    $bottom = $top
+
+            unless bottomOffset?
+
+                if @_isText $bottom
+                    bottomOffset = $bottom.textContent.length
+
+                else if $bottom.childNodes?
+                    bottomOffset = $bottom.childNodes.length
+
+                else
+                    bottomOffset = 0
+
+            if selection.collapse and selection.extend
+
+                selection.collapse $top, topOffset
+
+                selection.extend $bottom, bottomOffset
+
+            else
+
+                range = do @_global.document.createRange
+
+                range.setStart $top, topOffset
+
+                range.setEnd $bottom, bottomOffset
+
+                try ( do selection.removeAllRanges ) catch
+
+                selection.addRange range
+
+            @
+
+        SelectionPrototype.get = -&gt;
+
+            unless do @has then return false
+
+            positions = do @_get
+
+            positions.value = _EMPTY_STRING + @_selection
+
+            positions
+
+        SelectionPrototype.clear = -&gt;
+
+            try ( do @_selection.removeAllRanges ) catch
+
+            @
+
+        SelectionPrototype.getStart = -&gt;
+
+            selection = @_selection
+
+            unless selection or not selection.anchorNode? then return false
+
+            '$node' : selection.anchorNode
+            'offset' : selection.anchorOffset
+
+        SelectionPrototype.getEnd = -&gt;
+
+            selection = @_selection
+
+            unless selection or not selection.focusNode? then return false
+
+            '$node' : selection.focusNode
+            'offset' : selection.focusOffset
+
+        SelectionPrototype.getTop = -&gt;
+
+            positions = do @_get
+
+            '$node' : positions.$top
+            'offset' : positions.topOffset
+
+        SelectionPrototype.getBottom = -&gt;
+
+            positions = do @_get
+
+            '$node' : positions.$bottom
+            'offset' : positions.bottomOffset
+
+        SelectionPrototype._isPreceding = ( $firstNode, $secondNode ) -&gt;
+            $secondNode.compareDocumentPosition( $firstNode ) &amp; 2
+
+        SelectionPrototype._contains = ( $firstNode, $secondNode ) -&gt;
+            $firstNode.compareDocumentPosition( $secondNode ) &amp; 16
+
+        SelectionPrototype._isText = ( $node ) -&gt;
+            $node and $node.nodeType is 3
+
+        SelectionPrototype._precedes = ( $top, top, $bottom, bottom ) -&gt;
+
+            if $top is $bottom then return top &lt;= bottom
+
+            if @_isText( $top ) and @_isText $bottom
+                return @_isPreceding $top, $bottom
+
+            if @_isText( $top ) and not @_isText $bottom
+                return not @_precedes $bottom, bottom, $top, top
+
+            unless @_contains $top, $bottom
+                return @_isPreceding $top, $bottom
+
+            if $top.childNodes.length &lt;= top then return false
+
+            if $top.childNodes[ top ] is $bottom then return 0 &lt;= bottom
+
+            @_isPreceding $top.childNodes[ top ], $bottom
+
+        SelectionPrototype._get = -&gt;
+
+            unless do @has then return false
+
+            start = do @getStart
+            end = do @getEnd
+
+            if @_precedes start.$node, start.offset, end.$node, end.offset
+                top = start
+                bottom = end
+
+            else
+                top = end
+                bottom = start
+
+            '$start' :  start.$node
+            'startOffset' : start.offset
+            '$end' : end.$node
+            'endOffset' : end.offset
+            '$top' : top.$node
+            'topOffset' : top.offset
+            '$bottom' : bottom.$node
+            'bottomOffset' : bottom.offset
+
+        return Selection
+			</code></pre>
+			<button>Show Code</button>
+		</section>
+		<article class="article">
+<h1>Selection</h1>
+
+<h2>by <a href="https://github.com/wooorm">@wooorm</a></h2>
+
+<p><strong>Table of Contents</strong></p>
+
+<ul>
+<li><a href="#instantiation">Instantiation</a></li>
+<li><a href="#events">Events</a>
+<ul><li><a href="#selection-event"><strong>selection</strong> (Event)</a></li>
+<li><a href="#deselection-event"><strong>deselection</strong> (Event)</a></li></ul></li>
+<li><a href="#methods">Methods</a>
+<ul><li><a href="#get-method"><strong>get</strong> (Method)</a></li>
+<li><a href="#gettop-getbottom-getstart-getend-method"><strong>getTop</strong>, <strong>getBottom</strong>, <strong>getStart</strong>, <strong>getEnd</strong> (Method)</a></li>
+<li><a href="#clear-method"><strong>clear</strong> (Method)</a></li>
+<li><a href="#has-method"><strong>has</strong> (Method)</a></li>
+<li><a href="#set-method"><strong>set</strong> (Method)</a></li></ul></li>
+</ul>
+
+<p><em>Selection.js</em> is a JavaScript module wrapping around the DOM text selection 
+API. The module was created with the intention to be used on articles for the 
+purpose of allowing readers to notify the writer about editorial errors (style,
+grammar, &amp;c.), and not intended to manipulate the selection (although) 
+<em>selection.js</em> could be used for those means.</p>
+
+<p>The module is pretty small (~7kb uncompressed, ~3kb compressed, ~1kb gzipped) 
+and supports most modern browsers (Internet Explorer 9 and higher).</p>
+
+<p>The module relies on the following methods:</p>
+
+<ul>
+<li><code>addEventListener</code> &amp; <code>removeEventListener</code>: Chrome, Firefox, IE 9, Opera 7, 
+Safari.</li>
+<li><code>initCustomEvent</code>: Chrome, Firefox 6, IE 9, Opera unknown, Safari.</li>
+<li><code>getSelection</code>: Most browsers, IE 9.</li>
+<li><code>textContent</code>: Chrome, Firefox, IE 9, Opera, Safari.</li>
+<li><code>compareDocumentPosition</code>: Chrome, Firefox, IE 9, Opera, Safari.</li>
+</ul>
+
+<p>Overall the module should work in Chrome, Firefox, IE 9, Opera 7, and Safari. 
+Note that several well-implemented DOM level 2 methods are used (things like 
+<code>firstChild</code>, and <code>childNodes</code>).</p>
+
+<h2>Instantiation</h2>
+
+<p>Authors can instantiate the module by calling <code>Selection</code> as a constructor with
+an optional window object. If the result of calling <code>Selection</code> equals <code>false</code>,
+<code>getSelection</code> was not available in the window object and the module can't 
+work.</p>
+
+<pre><code>selection = new Selection
+</code></pre>
+
+<p>Here <code>Selection</code> is instantiated with the global object of the first frame.</p>
+
+<pre><code>selection = new Selection frames[ 0 ]
+</code></pre>
+
+<p>In the following example <code>Selection</code> is instantiated. If supported, we'll 
+listen to <code>selection</code> and <code>deselection</code> events.</p>
+
+<pre><code>selection = new Selection
+
+if selection
+    do selection.listen
+    # Some more code...
+</code></pre>
+
+<h2>Events</h2>
+
+<p>The main feature of <em>selection.js</em> is it's ability to fire events for 
+selections. <em>Selection.js</em> fires the <code>selection</code> event when the user selects 
+text (by double clicking on a word for example, or when using the the arrow 
+keys to extend a selection), and fires <code>deselection</code> when the user deselects 
+text (e.g. when a click outside a selection occurs). These events are 
+dispatched on the global space provided to the <code>Selection</code> constructor.</p>
+
+<p>You can start listening to events by calling <code>listen</code>, and stop listening by 
+calling <code>ignore</code>.</p>
+
+<p>In the following example, we listen to selection events. When the first 
+selection happens, we call <code>console.log</code> with the <code>value</code> of the selection. 
+Following that, we stop listening to selection events.</p>
+
+<pre><code>do selection.listen
+
+window.addEventListener 'selection', ( event ) -&gt;
+    console.log event.detail.value
+    do selection.ignore
+</code></pre>
+
+<h3><strong>selection</strong> (Event)</h3>
+
+<p>The <code>detail</code> property on the event object passed to <code>selection</code> listeners 
+contains returns a selection object (see "Get"), extended with:</p>
+
+<ul>
+<li><code>originalEvent</code> (Type <code>Event</code>): The original event, for example a MouseEvent 
+if the selection happened by clicking on a word.</li>
+</ul>
+
+<h3><strong>deselection</strong> (Event)</h3>
+
+<p>The <code>detail</code> property on the event object passed to <code>deselection</code> listeners 
+contains the following properties:</p>
+
+<ul>
+<li><code>originalEvent</code> (Type <code>Event</code>): The original event, for example a MouseEvent 
+if the selection happened by clicking outside a current selection.</li>
+</ul>
+
+<h2>Methods</h2>
+
+<h3><strong>get</strong> (Method)</h3>
+
+<p>The <code>get</code> method on an instance of <code>Selection</code> returns an object containing the
+following properties:</p>
+
+<ul>
+<li><code>value</code> (Type <code>String</code>, default <code>undefined</code>):<br/>
+A string representing what the user selected.</li>
+<li><code>$start</code> (Type <code>Node</code>, default <code>undefined</code>):<br/>
+A node representing where the selection began.</li>
+<li><code>startOffset</code> (Type <code>Number</code>, default <code>undefined</code>):<br/>
+The position of the character in <code>$start</code> where the selection began.</li>
+<li><code>$end</code> (Type <code>Node</code>, default <code>undefined</code>):<br/>
+A node representing where the selection ended.</li>
+<li><code>endOffset</code> (Type <code>Number</code>, default <code>undefined</code>):<br/>
+The position of the character in <code>$end</code> where the selection ended.</li>
+<li><code>$top</code> (Type <code>Node</code>, default <code>undefined</code>):<br/>
+Either <code>$start</code> or <code>$end</code>, depending on which came before.</li>
+<li><code>topOffset</code> (Type <code>Number</code>, default <code>undefined</code>):<br/>
+Either <code>startOffset</code> or <code>endOffset</code>, depending on which came before.</li>
+<li><code>$bottom</code> (Type <code>Node</code>, default <code>undefined</code>):<br/>
+Either <code>$start</code> or <code>$end</code>, depending on which came after.</li>
+<li><code>bottomOffset</code> (Type <code>Number</code>, default <code>undefined</code>):<br/>
+Either <code>startOffset</code> or <code>endOffset</code>, depending on which came after.</li>
+</ul>
+
+<h3><strong>getTop</strong>, <strong>getBottom</strong>, <strong>getStart</strong>, <strong>getEnd</strong> (Method)</h3>
+
+<p>The <code>getTop</code>, <code>getBottom</code>, <code>getStart</code>, and <code>getEnd</code> methods on an instance of 
+<code>Selection</code> returns an object containing the following properties:</p>
+
+<ul>
+<li><code>$node</code> (Type <code>Node</code>): A node corresponding to the requested value in <code>get</code>.</li>
+<li><code>offset</code> (Type <code>Number</code>): A number corresponding to the requested value in 
+<code>get</code>.</li>
+</ul>
+
+<h3><strong>clear</strong> (Method)</h3>
+
+<p>The <code>clear</code> method removes a selection, and returns the instance of 
+<code>Selection</code>.</p>
+
+<h3><strong>has</strong> (Method)</h3>
+
+<p>The <code>has</code> method returns <code>true</code> when the global space provided to the <code>Selection</code>
+constructor has a selection, and <code>false</code> otherwise.</p>
+
+<h3><strong>set</strong> (Method)</h3>
+
+<p>The <code>set</code> method allows the developer to programmatically set a selection, and 
+returns the instance of <code>Selection</code>. Set takes the following arguments:</p>
+
+<ul>
+<li><code>$top</code>: (Type <code>Node</code>) A DOM node representing the top of the selection.</li>
+<li><code>topOffset</code> (Type <code>Number</code>, default <code>0</code>): The indice of the starting 
+character.</li>
+<li><code>$bottom</code> (Type <code>Node</code>, default: [*]): A DOM node representing the bottom element of the 
+selection.</li>
+<li><code>bottomOffset</code> (Type <code>Number</code>, default: [**]): The indice of the ending character.</li>
+</ul>
+
+<p>[*]: If <code>$top</code> has a first- and last child, <code>$bottom</code> will default to 
+<code>$top.lastChild</code> and <code>$top</code> will be set to <code>$top.firstChild</code>, otherwise, 
+<code>$bottom</code> will default to <code>$top</code>.</p>
+
+<p>[**]: If <code>$bottom</code> is not a text node then <code>bottomOffset</code> will default to 
+<code>$bottom.childNodes.length</code>, otherwise <code>bottomOffset</code> will default to 
+<code>$bottom.textContent.length</code>.</p>
+
+<h1>Annotated Source</h1>
+
+<p><strong>Table of Contents</strong></p>
+
+<ul>
+<li><a href="#explicit-private-variables">Explicit Private variables</a></li>
+<li><a href="#constructor">Constructor</a></li>
+<li><a href="#prototype">Prototype</a>
+<ul><li><a href="#_listener-implicitly-private">_listener [implicitly private]</a></li>
+<li><a href="#listen-public">listen [public]</a></li>
+<li><a href="#ignore-public">ignore [public]</a></li>
+<li><a href="#has-public">has [public]</a></li>
+<li><a href="#set-public">set [public]</a></li>
+<li><a href="#get-public">get [public]</a></li>
+<li><a href="#clear-public">clear [public]</a></li>
+<li><a href="#getstart-public">getStart [public]</a></li>
+<li><a href="#getend-public">getEnd [public]</a></li>
+<li><a href="#gettop-public">getTop [public]</a></li>
+<li><a href="#getbottom-public">getBottom [public]</a></li>
+<li><a href="#_ispreceding-implicitly-private">_isPreceding [implicitly private]</a></li>
+<li><a href="#_contains-implicitly-private">_contains [implicitly private]</a></li>
+<li><a href="#_istext-implicitly-private">_isText [implicitly private]</a></li>
+<li><a href="#_precedes-implicitly-private">_precedes [implicitly private]</a></li>
+<li><a href="#_get-implicitly-private">_get [implicitly private]</a></li></ul></li>
+<li><a href="#return-value">Return value</a></li>
+</ul>
+
+<p>Wrap the module in a method that either passes the constructor to <code>define</code> 
+if AMD is available, or registers it on the current global space.</p>
+
+<pre><code>(
+    ( factory ) -&gt;
+</code></pre>
+
+<p>If <code>define</code> is of type <code>"function"</code>, and <code>amd</code> of <code>define</code> is truthy, call 
+<code>define</code> with <code>factory</code>.</p>
+
+<pre><code>        if typeof define is 'function' and define.amd then define factory
+</code></pre>
+
+<p>Otherwise, let <code>@Selection</code> be the result of calling <code>factory</code>.</p>
+
+<pre><code>        else @Selection = do factory
+
+).call @, -&gt;
+</code></pre>
+
+<h2>Explicit Private variables</h2>
+
+<p>Let <code>_global</code> reference the current context.</p>
+
+<pre><code>    _global = @
+</code></pre>
+
+<p>Let <code>_EVENTS</code> be a list of possible selection change events.</p>
+
+<pre><code>    _EVENTS = [ 'mouseup', 'keyup' ]
+</code></pre>
+
+<p>Let <code>_EMPTY_STRING</code> be an empty string.</p>
+
+<pre><code>    _EMPTY_STRING = ''
+</code></pre>
+
+<h2>Constructor</h2>
+
+<p>Let <code>Selection</code> be a constructor function, taking an optional context.</p>
+
+<pre><code>    Selection = ( global ) -&gt;
+</code></pre>
+
+<p>If <code>global</code> is not passed, fall back to <code>_global</code>.</p>
+
+<pre><code>        global or global = _global
+</code></pre>
+
+<p>If the type of <code>getSelection</code> is not <code>"function"</code>, selection is not supported, 
+so we return <code>false</code>.</p>
+
+<pre><code>        if typeof global.getSelection isnt 'function' then return false
+</code></pre>
+
+<p>Let <code>@_selection</code> be the result of calling <code>getSelection</code> on <code>global</code>.</p>
+
+<pre><code>        @_selection = do global.getSelection
+</code></pre>
+
+<p>Let <code>@global</code> reference <code>global</code>.</p>
+
+<pre><code>        @_global = global
+</code></pre>
+
+<p>Bind context <code>self</code> to <code>@_listener</code>.</p>
+
+<pre><code>        @_listener = =&gt; SelectionPrototype._listener.apply @, arguments
+</code></pre>
+
+<p>Let <code>@events</code> reference <code>EVENTS</code> (by default).</p>
+
+<pre><code>        @events = _EVENTS
+</code></pre>
+
+<p>Return <code>self</code>.</p>
+
+<pre><code>        @
+</code></pre>
+
+<h2>Prototype</h2>
+
+<pre><code>    SelectionPrototype = Selection:: = {}
+</code></pre>
+
+<h3>_listener [implicitly private]</h3>
+
+<p><code>_listener</code> is a method used as a event listener, dispatching <code>selection</code> 
+events when the selection of user changes.</p>
+
+<pre><code>    SelectionPrototype._listener = ( _event ) -&gt;
+</code></pre>
+
+<p>The body of <code>_listener</code> is wrapped in <code>setTimeout</code> with <code>timeout=0</code> (moving it 
+to the end of the call-stack), because the actual selection changes only when 
+bubbling is not prevented on the original event.</p>
+
+<pre><code>        setTimeout =&gt;
+</code></pre>
+
+<p>Let <code>value</code> be the result of (implicitly) calling <code>toString</code> on the actual 
+selection.</p>
+
+<pre><code>                value = _EMPTY_STRING + @_selection
+</code></pre>
+
+<p>If <code>value</code> equals <code>@_previousValue</code>, nothing has changed, so we return.</p>
+
+<pre><code>                if value is @_previousValue then return
+</code></pre>
+
+<p>If <code>value</code> equals an empty string, the user deselected a previous selection. 
+Let <code>type</code> be <code>"deselection"</code> and <code>data</code> reference an empty object.</p>
+
+<pre><code>                if value is _EMPTY_STRING
+                    type = 'deselection'
+                    data = {}
+</code></pre>
+
+<p>Otherwise, Let <code>type</code> be <code>"selection"</code> and <code>data</code> reference the result of 
+calling <code>@get</code>.</p>
+
+<pre><code>                else
+                    type = 'selection'
+                    data = do @get
+</code></pre>
+
+<p>Let <code>originalEvent</code> of <code>data</code> reference <code>event_</code> (the original event).</p>
+
+<pre><code>                data.originalEvent = _event
+</code></pre>
+
+<p>let <code>event</code> be the result of calling <code>createEvent</code> with <code>"CustomEvent"</code>, call 
+<code>initCustomEvent</code> on <code>event</code> with type <code>type</code>, <code>canBubble="false"</code>, 
+<code>cancelable=false</code>, and <code>data</code>.</p>
+
+<pre><code>                event = @_global.document.createEvent 'CustomEvent'
+                event.initCustomEvent type, false, false, data
+</code></pre>
+
+<p>Call <code>dispatchEvent</code> on <code>@_global</code> with <code>event</code>.</p>
+
+<pre><code>                @_global.dispatchEvent event
+</code></pre>
+
+<p>Let <code>@_previousValue</code> be <code>value</code>.</p>
+
+<pre><code>                @_previousValue = value
+
+            , 0
+</code></pre>
+
+<p>Return <code>self</code>.</p>
+
+<pre><code>        @
+</code></pre>
+
+<h3>listen [public]</h3>
+
+<p>A method attaching <code>_listener</code> to each <code>event</code> in <code>@events</code> on <code>document</code>.</p>
+
+<pre><code>    SelectionPrototype.listen = -&gt;
+</code></pre>
+
+<p>Let <code>@_previousValue</code> be an empty string.</p>
+
+<pre><code>        @_previousValue = _EMPTY_STRING
+</code></pre>
+
+<p>Let <code>iterator</code> be <code>-1</code>, <code>events</code> reference <code>@events</code>, <code>length</code> be <code>length</code> 
+of <code>events</code>, and <code>document</code> reference <code>document</code> of <code>@_global</code>.</p>
+
+<pre><code>        iterator = -1
+        events = @events
+        length = events.length
+        document = @_global.document
+</code></pre>
+
+<p>While adding one to <code>iterator</code> is less than <code>length</code>...</p>
+
+<pre><code>        while ++iterator &lt; length
+</code></pre>
+
+<p>Let <code>event</code> reference <code>iterator</code> of <code>events</code>.</p>
+
+<pre><code>            event = events[ iterator ]
+</code></pre>
+
+<p>Call <code>addEventListener</code> on <code>document</code> with <code>event</code>, <code>@_listener</code>, and <code>false</code>.</p>
+
+<pre><code>            document.addEventListener event, @_listener, false
+</code></pre>
+
+<p>Return <code>self</code>.</p>
+
+<pre><code>        @
+</code></pre>
+
+<h3>ignore [public]</h3>
+
+<p>A method detaching <code>_listener</code> to each <code>event</code> in <code>@events</code> on <code>document</code>.</p>
+
+<pre><code>    SelectionPrototype.ignore = -&gt;
+</code></pre>
+
+<p>Let <code>iterator</code> be <code>-1</code>, <code>events</code> reference <code>@events</code>, <code>length</code> be <code>length</code> 
+of <code>events</code>, and <code>document</code> be <code>document</code> of <code>@_global</code>.</p>
+
+<pre><code>        iterator = -1
+        events = @events
+        length = events.length
+        document = @_global.document
+</code></pre>
+
+<p>While adding one to <code>iterator</code> is less than <code>length</code>...</p>
+
+<pre><code>        while ++iterator &lt; length
+</code></pre>
+
+<p>Let <code>event</code> reference <code>iterator</code> of <code>events</code>.</p>
+
+<pre><code>            event = events[ iterator ]
+</code></pre>
+
+<p>Call <code>removeEventListener</code> on <code>document</code> with <code>event</code>, <code>@_listener</code>, and 
+<code>false</code>.</p>
+
+<pre><code>            document.removeEventListener event, @_listener, false
+</code></pre>
+
+<p>Return <code>self</code>.</p>
+
+<pre><code>        @
+</code></pre>
+
+<h3>has [public]</h3>
+
+<p>A method detecting whether or not an actual selection is present.</p>
+
+<pre><code>    SelectionPrototype.has = -&gt;
+</code></pre>
+
+<p>Let <code>selection</code> reference <code>@_selection</code>.</p>
+
+<pre><code>        selection = @_selection
+</code></pre>
+
+<p>Return whether <code>selection</code> is truthy, <code>focusNode</code> of <code>selection</code> is neither 
+<code>null</code> nor <code>undefined</code>, and <code>anchorNode</code> of <code>selection</code> is neither <code>null</code> nor 
+<code>undefined</code>.</p>
+
+<pre><code>        selection and selection.focusNode? and selection.anchorNode?
+</code></pre>
+
+<h3>set [public]</h3>
+
+<p>A method setting an actual selection, taking the following arguments:</p>
+
+<ul>
+<li><code>$top</code>: A DOM node representing the top of the selection.</li>
+<li><code>topOffset</code> (optional): The indice of the starting character.</li>
+<li><code>$bottom</code> (optional): A DOM node representing the bottom element of the 
+selection.</li>
+<li><p><code>bottomOffset</code> (optional): The indice of the ending character.</p>
+
+<pre><code>SelectionPrototype.set = ( $top, topOffset, $bottom, bottomOffset ) -&gt;
+</code></pre></li>
+</ul>
+
+<p>Let <code>selection</code> reference <code>@_selection</code>.</p>
+
+<pre><code>        selection = @_selection
+</code></pre>
+
+<p>If <code>selection</code> is either <code>null</code> or <code>undefined</code>, return <code>false</code>.</p>
+
+<pre><code>        unless selection? then return false
+</code></pre>
+
+<p>If <code>$top</code> is either <code>null</code> or <code>undefined</code>, return <code>false</code>.</p>
+
+<pre><code>        unless $top? then return false
+</code></pre>
+
+<p>If <code>topOffset</code> is either <code>null</code> or <code>undefined</code>, let <code>topOffset</code> be <code>0</code>.</p>
+
+<pre><code>        unless topOffset? then topOffset = 0
+</code></pre>
+
+<p>If <code>$bottom</code> is <code>$top</code>, or if <code>$bottom</code> is either <code>null</code> or <code>undefined</code>...</p>
+
+<pre><code>        if $bottom is $top or not $bottom?
+</code></pre>
+
+<p>If <code>$top.firstChild</code> is neither <code>null</code> nor <code>undefined</code> and <code>$top.firstChild</code> is
+neither <code>null</code> nor <code>undefined</code>, let <code>$bottom</code> reference the first child of 
+<code>$top</code>, and <code>$top</code> the last.</p>
+
+<pre><code>            if $top.firstChild? and $top.lastChild?
+                $bottom = $top.lastChild
+                $top = $top.firstChild
+</code></pre>
+
+<p>Else, let <code>$bottom</code> reference <code>$top</code>.</p>
+
+<pre><code>            else
+                $bottom = $top
+</code></pre>
+
+<p>If <code>bottomOffset</code> is either <code>null</code> or <code>undefined</code>...</p>
+
+<pre><code>        unless bottomOffset?
+</code></pre>
+
+<p>If <code>$bottom</code> is a textNode, let <code>bottomOffset</code> be <code>length</code> of <code>textContent</code> of 
+<code>$bottom</code>.</p>
+
+<pre><code>            if @_isText $bottom
+                bottomOffset = $bottom.textContent.length
+</code></pre>
+
+<p>Otherwise, if <code>childNodes</code> of <code>$bottom</code> is neither <code>null</code> nor <code>undefined</code>, let
+<code>bottomOffset</code> be <code>length</code> of <code>$bottom.childNodes</code>.</p>
+
+<pre><code>            else if $bottom.childNodes?
+                bottomOffset = $bottom.childNodes.length
+</code></pre>
+
+<p>Otherwise, let <code>bottomOffset</code> be <code>0</code>.</p>
+
+<pre><code>            else
+                bottomOffset = 0
+</code></pre>
+
+<p>If <code>collapse</code> of <code>selection</code>, and <code>extend</code> of <code>selection</code> are both truthy...</p>
+
+<pre><code>        if selection.collapse and selection.extend
+</code></pre>
+
+<p>Call <code>collapse</code> on <code>selection</code> with <code>$top</code> and <code>topOffset</code> to move both 
+<code>anchor</code> and <code>focus</code> points of the selectionRange to the specified point.</p>
+
+<pre><code>            selection.collapse $top, topOffset
+</code></pre>
+
+<p>Call <code>extend</code> on <code>selection</code> with <code>$bottom</code> and <code>bottomOffset</code> to move the 
+focus point of the current selectionRange to the specified point.</p>
+
+<pre><code>            selection.extend $bottom, bottomOffset
+</code></pre>
+
+<p>Else (for browsers like IE9, &amp;c)...</p>
+
+<pre><code>        else
+</code></pre>
+
+<p>Let <code>range</code> be the result of calling <code>createRange</code> of <code>document</code> of <code>@_global</code>.</p>
+
+<pre><code>            range = do @_global.document.createRange
+</code></pre>
+
+<p>Call <code>setStart</code> on <code>range</code> with <code>$top</code> and <code>topOffset</code>.</p>
+
+<pre><code>            range.setStart $top, topOffset
+</code></pre>
+
+<p>Call <code>setEnd</code> on <code>range</code> with <code>$bottom</code> and <code>bottomOffset</code>.</p>
+
+<pre><code>            range.setEnd $bottom, bottomOffset
+</code></pre>
+
+<p>Try (as IE9 sometimes might throw) to call <code>removeAllRanges</code> on <code>selection</code>.</p>
+
+<pre><code>            try ( do selection.removeAllRanges ) catch
+</code></pre>
+
+<p>Call <code>addRange</code> on <code>selection</code> with <code>range</code>.</p>
+
+<pre><code>            selection.addRange range
+</code></pre>
+
+<p>Return <code>self</code>.</p>
+
+<pre><code>        @
+</code></pre>
+
+<h3>get [public]</h3>
+
+<p>A method returning an object similar to an actual selection object.</p>
+
+<pre><code>    SelectionPrototype.get = -&gt;
+</code></pre>
+
+<p>If the result of calling <code>@has</code> is falsey, return <code>false</code>.</p>
+
+<pre><code>        unless do @has then return false
+</code></pre>
+
+<p>Let <code>positions</code> be the result of calling <code>@_get</code>.</p>
+
+<pre><code>        positions = do @_get
+</code></pre>
+
+<p>Let <code>value</code> of <code>positions</code> be the result of (implicitly) calling <code>toString</code> on 
+the actual selection.</p>
+
+<pre><code>        positions.value = _EMPTY_STRING + @_selection
+</code></pre>
+
+<p>Return the <code>positions</code> object.</p>
+
+<pre><code>        positions
+</code></pre>
+
+<h3>clear [public]</h3>
+
+<p>Removes an actual selection.</p>
+
+<pre><code>    SelectionPrototype.clear = -&gt;
+</code></pre>
+
+<p>Try (as IE9 sometimes might throw) to call <code>removeAllRanges</code> on <code>@_selection</code>.</p>
+
+<pre><code>        try ( do @_selection.removeAllRanges ) catch
+</code></pre>
+
+<p>Return <code>self</code>.</p>
+
+<pre><code>        @
+</code></pre>
+
+<h3>getStart [public]</h3>
+
+<p>Returns the anchor of the actual selection.</p>
+
+<pre><code>    SelectionPrototype.getStart = -&gt;
+</code></pre>
+
+<p>Let <code>selection</code> reference <code>@_selection</code>.</p>
+
+<pre><code>        selection = @_selection
+</code></pre>
+
+<p>If <code>selection</code> is falsey, or <code>anchorNode</code> of <code>selection</code> is either <code>null</code> or 
+<code>undefined</code>, return <code>false</code>.</p>
+
+<pre><code>        unless selection or not selection.anchorNode? then return false
+</code></pre>
+
+<p>Return an object with properties:</p>
+
+<ul>
+<li><code>$node</code>: Referencing <code>anchorNode</code> of <code>selection</code>.</li>
+<li><p><code>offset</code>: Referencing <code>anchorOffset</code> of <code>selection</code>.</p>
+
+<pre><code>    '$node' : selection.anchorNode
+    'offset' : selection.anchorOffset
+</code></pre></li>
+</ul>
+
+<h3>getEnd [public]</h3>
+
+<p>Returns the end of the actual selection.</p>
+
+<pre><code>    SelectionPrototype.getEnd = -&gt;
+</code></pre>
+
+<p>Let <code>selection</code> reference <code>@_selection</code>.</p>
+
+<pre><code>        selection = @_selection
+</code></pre>
+
+<p>If <code>selection</code> is falsey, or <code>focusNode</code> of <code>selection</code> is either <code>null</code> or 
+<code>undefined</code>, return <code>false</code>.</p>
+
+<pre><code>        unless selection or not selection.focusNode? then return false
+</code></pre>
+
+<p>Return an object with properties:</p>
+
+<ul>
+<li><code>$node</code>: Referencing <code>focusNode</code> of <code>selection</code>.</li>
+<li><p><code>offset</code>: Referencing <code>focusOffset</code> of <code>selection</code>.</p>
+
+<pre><code>    '$node' : selection.focusNode
+    'offset' : selection.focusOffset
+</code></pre></li>
+</ul>
+
+<h3>getTop [public]</h3>
+
+<p>Return either <code>focus</code> or <code>anchor</code> of the actual selection, depending on which 
+position comes <strong>first</strong>.</p>
+
+<pre><code>    SelectionPrototype.getTop = -&gt;
+</code></pre>
+
+<p>Let <code>positions</code> be the result of calling <code>@_get</code>.</p>
+
+<pre><code>        positions = do @_get
+</code></pre>
+
+<p>Return an object containing:</p>
+
+<ul>
+<li><code>$node</code>: Referencing <code>$top</code> of <code>positions</code>.</li>
+<li><p><code>offset</code>: Referencing <code>topOffset</code> of <code>positions</code>.</p>
+
+<pre><code>    '$node' : positions.$top
+    'offset' : positions.topOffset
+</code></pre></li>
+</ul>
+
+<h3>getBottom [public]</h3>
+
+<p>Return either <code>focus</code> or <code>anchor</code> of the actual selection, depending on which 
+position comes <strong>last</strong>.</p>
+
+<pre><code>    SelectionPrototype.getBottom = -&gt;
+</code></pre>
+
+<p>Let <code>positions</code> be the result of calling <code>@_get</code>.</p>
+
+<pre><code>        positions = do @_get
+</code></pre>
+
+<p>Return an object containing:</p>
+
+<ul>
+<li><code>$node</code>: Referencing <code>$bottom</code> of <code>positions</code>.</li>
+<li><p><code>offset</code>: Referencing <code>bottomOffset</code> of <code>positions</code>.</p>
+
+<pre><code>    '$node' : positions.$bottom
+    'offset' : positions.bottomOffset
+</code></pre></li>
+</ul>
+
+<h3>_isPreceding [implicitly private]</h3>
+
+<p>Returns whether <code>$firstNode</code> precedes <code>$secondNode</code>.</p>
+
+<pre><code>    SelectionPrototype._isPreceding = ( $firstNode, $secondNode ) -&gt;
+        $secondNode.compareDocumentPosition( $firstNode ) &amp; 2
+</code></pre>
+
+<h3>_contains [implicitly private]</h3>
+
+<p>Returns whether <code>$secondNode</code> is positioned inside <code>$secondNode</code>.</p>
+
+<pre><code>    SelectionPrototype._contains = ( $firstNode, $secondNode ) -&gt;
+        $firstNode.compareDocumentPosition( $secondNode ) &amp; 16
+</code></pre>
+
+<h3>_isText [implicitly private]</h3>
+
+<p>Returns whether <code>$node</code> is truthy, and <code>nodeType</code> of <code>$node</code> is <code>3</code>.</p>
+
+<pre><code>    SelectionPrototype._isText = ( $node ) -&gt;
+        $node and $node.nodeType is 3
+</code></pre>
+
+<h3>_precedes [implicitly private]</h3>
+
+<p>Returns <code>true</code> if start is before end (with a bias to start if they are 
+both the same).</p>
+
+<pre><code>    SelectionPrototype._precedes = ( $top, top, $bottom, bottom ) -&gt;
+</code></pre>
+
+<p>If <code>$top</code> equals <code>$bottom</code>, return whether <code>top</code> is smaller than or equal to 
+<code>bottom</code>.</p>
+
+<pre><code>        if $top is $bottom then return top &lt;= bottom
+</code></pre>
+
+<p>If the results of calling both <code>@_isText</code> with <code>$top</code>, and <code>@_isText</code> with 
+<code>$bottom</code> are both truthy, return whether <code>$top</code> is preceding <code>$bottom</code>.</p>
+
+<pre><code>        if @_isText( $top ) and @_isText $bottom
+            return @_isPreceding $top, $bottom
+</code></pre>
+
+<p>If the result of calling <code>@_isText</code> with <code>$top</code> is truthy, return the 
+inverse of calling <code>@_precedes</code> with <code>$bottom</code>, <code>bottom</code>, <code>$top</code>, and 
+<code>top</code>.</p>
+
+<pre><code>        if @_isText( $top ) and not @_isText $bottom
+            return not @_precedes $bottom, bottom, $top, top
+</code></pre>
+
+<p>If calling <code>@_contains</code> with <code>$top</code> and <code>$bottom</code> return truthy, return the 
+result of calling <code>@_isPreceding</code> with <code>$top</code> and <code>$bottom</code>.</p>
+
+<pre><code>        unless @_contains $top, $bottom
+            return @_isPreceding $top, $bottom
+</code></pre>
+
+<p>If <code>length</code> of <code>childNodes</code> of <code>$top</code> is smaller than or equal to <code>top</code>, 
+return <code>false</code>.</p>
+
+<pre><code>        if $top.childNodes.length &lt;= top then return false
+</code></pre>
+
+<p>If <code>length</code> of <code>childNodes</code> of <code>$top</code> is smaller than or equal to <code>top</code>, 
+return <code>false</code>.</p>
+
+<pre><code>        if $top.childNodes[ top ] is $bottom then return 0 &lt;= bottom
+</code></pre>
+
+<p>Return the result of calling <code>@_isPreceding</code> with <code>top</code> of <code>childNodes</code> of 
+<code>$top</code>, and <code>$bottom</code>.</p>
+
+<pre><code>        @_isPreceding $top.childNodes[ top ], $bottom
+</code></pre>
+
+<h3>_get [implicitly private]</h3>
+
+<p>Returns an object with:</p>
+
+<ul>
+<li><code>$top</code>: Either <code>focus</code> or <code>anchor</code> of the actual selection, depending on 
+which position comes <strong>first</strong>.</li>
+<li><code>topOffset</code>: the offset belonging to <code>$top</code>.</li>
+<li><code>$bottom</code>: Either <code>focus</code> or <code>anchor</code> of the actual selection, depending on 
+which position comes <strong>last</strong>.</li>
+<li><p><code>bottomOffset</code>: the offset belonging to <code>$bottom</code>.</p>
+
+<pre><code>SelectionPrototype._get = -&gt;
+</code></pre></li>
+</ul>
+
+<p>If the result of calling <code>@has</code> is falsey, return <code>false</code>.</p>
+
+<pre><code>        unless do @has then return false
+</code></pre>
+
+<p>Let <code>start</code> be the result of calling <code>@getStart</code>, and <code>end</code> be the result 
+of calling <code>@getEnd</code>.</p>
+
+<pre><code>        start = do @getStart
+        end = do @getEnd
+</code></pre>
+
+<p>If calling <code>@_precedes</code> with <code>$node</code> of <code>start</code>, <code>offset</code> of <code>start</code>, <code>$node</code> 
+of <code>end</code>, and <code>offset</code> of <code>end</code> is truthy, let <code>top</code> be <code>start</code>, and <code>bottom</code> 
+be <code>end</code>.</p>
+
+<pre><code>        if @_precedes start.$node, start.offset, end.$node, end.offset
+            top = start
+            bottom = end
+</code></pre>
+
+<p>Otherwise, let <code>top</code> be <code>end</code> and <code>bottom</code> be <code>start</code>.</p>
+
+<pre><code>        else
+            top = end
+            bottom = start
+</code></pre>
+
+<p>Return an flattened object of <code>start</code>, <code>end</code>, <code>top</code>, and <code>bottom</code>.</p>
+
+<pre><code>        '$start' :  start.$node
+        'startOffset' : start.offset
+        '$end' : end.$node
+        'endOffset' : end.offset
+        '$top' : top.$node
+        'topOffset' : top.offset
+        '$bottom' : bottom.$node
+        'bottomOffset' : bottom.offset
+</code></pre>
+
+<h2>Return value</h2>
+
+<p>Return the constructor function <code>Selection</code>.</p>
+
+<pre><code>    return Selection
+</code></pre>
+		</article>
+		<script src=./client.js></script>
+	</body>
+</html>
